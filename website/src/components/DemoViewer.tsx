@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import { PROTEIN_SAMPLE } from "@/lib/samples";
 import { ViewerDesktopNotice } from "./ViewerDesktopNotice";
-import "reseqt/style.css";
+import "reseqtjs/style.css";
 
-const ReSeqt = dynamic(() => import("reseqt").then((m) => m.ReSeqt), {
+const ReSeqt = dynamic(() => import("reseqtjs").then((m) => m.ReSeqt), {
   ssr: false,
   loading: () => (
     <div className="h-80 flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">

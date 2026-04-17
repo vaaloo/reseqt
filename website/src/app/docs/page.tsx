@@ -20,12 +20,12 @@ const sections = [
   { id: "notes", label: "Notes" },
 ];
 
-const INSTALL = `npm install reseqt
+const INSTALL = `npm install reseqtjs
 # or
-yarn add reseqt`;
+yarn add reseqtjs`;
 
-const BASIC = `import { ReSeqt } from "reseqt";
-import "reseqt/style.css";
+const BASIC = `import { ReSeqt } from "reseqtjs";
+import "reseqtjs/style.css";
 
 const fasta = \`
 >Seq1
@@ -40,8 +40,8 @@ export default function App() {
   return <ReSeqt fasta={fasta} />;
 }`;
 
-const AA = `import { ReSeqt } from "reseqt";
-import "reseqt/style.css";
+const AA = `import { ReSeqt } from "reseqtjs";
+import "reseqtjs/style.css";
 
 export default function App() {
   return <ReSeqt fasta={proteinFasta} isAminoAcid />;
@@ -78,8 +78,8 @@ export function ThemeToggle() {
   return <button onClick={toggle}>{dark ? "Light" : "Dark"}</button>;
 }`;
 
-const CSS_OVERRIDE = `/* Import reseqt styles first */
-import "reseqt/style.css";
+const CSS_OVERRIDE = `/* Import reseqtjs styles first */
+import "reseqtjs/style.css";
 
 /* Then override variables in your own CSS */
 :root {
@@ -126,7 +126,7 @@ export default function DocsPage() {
                 GitHub
               </a>
               <a
-                href="https://www.npmjs.com/package/reseqt"
+                href="https://www.npmjs.com/package/reseqtjs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
@@ -268,7 +268,7 @@ export default function DocsPage() {
             </div>
             <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm">
               <InlineCode>ReSeqtProps</InlineCode> is exported for use in typed projects:{" "}
-              <InlineCode>{"import type { ReSeqtProps } from 'reseqt'"}</InlineCode>
+              <InlineCode>{"import type { ReSeqtProps } from 'reseqtjs'"}</InlineCode>
             </p>
           </section>
 
@@ -521,7 +521,7 @@ export default function DocsPage() {
             <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
               ReSeqt uses CSS custom properties for all UI chrome (toolbar, labels, panels). You can
               override them in your own stylesheet to match your application&apos;s theme. Import
-              your overrides <em>after</em> <InlineCode>reseqt/style.css</InlineCode> so they take
+              your overrides <em>after</em> <InlineCode>reseqtjs/style.css</InlineCode> so they take
               precedence.
             </p>
 
@@ -646,7 +646,7 @@ export default function DocsPage() {
                 GitHub
               </a>
               <a
-                href="https://www.npmjs.com/package/reseqt"
+                href="https://www.npmjs.com/package/reseqtjs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"

@@ -5,9 +5,9 @@ import dynamic from "next/dynamic";
 import { PROTEIN_SAMPLE, NUCLEOTIDE_SAMPLE } from "@/lib/samples";
 import { Sun, Moon, Upload, ChevronDown } from "lucide-react";
 import { ViewerDesktopNotice } from "./ViewerDesktopNotice";
-import "reseqt/style.css";
+import "reseqtjs/style.css";
 
-const ReSeqt = dynamic(() => import("reseqt").then((m) => m.ReSeqt), {
+const ReSeqt = dynamic(() => import("reseqtjs").then((m) => m.ReSeqt), {
   ssr: false,
   loading: () => (
     <div className="h-64 flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl">

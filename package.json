@@ -1,5 +1,5 @@
 {
-  "name": "reseqt",
+  "name": "reseqtjs",
   "version": "1.0.0",
   "description": "High-performance multiple sequence alignment viewer for React",
   "license": "MIT",

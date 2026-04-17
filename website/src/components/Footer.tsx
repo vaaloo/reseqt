@@ -18,7 +18,7 @@ export function Footer() {
             Playground
           </Link>
           <a
-            href="https://www.npmjs.com/package/reseqt"
+            href="https://www.npmjs.com/package/reseqtjs"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors"

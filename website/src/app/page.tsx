@@ -14,10 +14,10 @@ import { CodeBlock } from "@/components/CodeBlock";
 import { DemoViewer } from "@/components/DemoViewer";
 import { GithubIcon } from "@/components/GithubIcon";
 
-const INSTALL_CMD = `npm install reseqt`;
+const INSTALL_CMD = `npm install reseqtjs`;
 
-const BASIC_USAGE = `import { ReSeqt } from "reseqt";
-import "reseqt/style.css";
+const BASIC_USAGE = `import { ReSeqt } from "reseqtjs";
+import "reseqtjs/style.css";
 
 const fasta = \`
 >Seq1

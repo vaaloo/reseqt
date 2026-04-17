@@ -50,11 +50,11 @@ It is built for developers who build bioinformatics tools in React, and for scie
 ## Installation
 
 ```bash
-npm install reseqt
+npm install reseqtjs
 ```
 
 ```bash
-yarn add reseqt
+yarn add reseqtjs
 ```
 
 ---
@@ -64,8 +64,8 @@ yarn add reseqt
 ### Minimal example
 
 ```tsx
-import { ReSeqt } from "reseqt";
-import "reseqt/style.css";
+import { ReSeqt } from "reseqtjs";
+import "reseqtjs/style.css";
 
 const fasta = `
 >Seq1
@@ -88,8 +88,8 @@ The CSS import is required. Without it the component will render but the layout 
 ### With amino acid sequences
 
 ```tsx
-import { ReSeqt } from "reseqt";
-import "reseqt/style.css";
+import { ReSeqt } from "reseqtjs";
+import "reseqtjs/style.css";
 
 const fasta = `
 >Human_HBA
