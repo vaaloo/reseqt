@@ -1,0 +1,55 @@
+{
+  "name": "reseqt",
+  "version": "1.0.0",
+  "description": "High-performance multiple sequence alignment viewer for React",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./style.css": "./dist/index.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "keywords": [
+    "react",
+    "bioinformatics",
+    "alignment",
+    "msa",
+    "sequence",
+    "fasta",
+    "viewer"
+  ],
+  "author": "vaaloo",
+  "homepage": "https://reseqt.vaaloo.fr",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vaaloo/reseqt"
+  },
+  "bugs": {
+    "url": "https://github.com/vaaloo/reseqt/issues"
+  },
+  "peerDependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  }
+}
