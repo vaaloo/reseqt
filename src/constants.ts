@@ -1,5 +1,5 @@
 export const AXIS_H         = 32;
-export const CONSERVATION_H = 44;
+export const LOGO_H         = 64;
 export const TOOLBAR_H      = 58;
 export const SEARCH_H       = 36;
 export const GOTO_H         = 36;

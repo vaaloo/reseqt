@@ -7,7 +7,7 @@ import {
     residueBg, residueProp, seqColor, hexRgb,
 } from './colors';
 import {
-    AXIS_H, CONSERVATION_H, TOOLBAR_H, SEARCH_H, GOTO_H, SORT_H,
+    AXIS_H, LOGO_H, TOOLBAR_H, SEARCH_H, GOTO_H, SORT_H,
     COLORSCHEME_H, EXPORT_H, LEGEND_H, STATUSBAR_H, MAX_CANVAS_H,
     OVERVIEW_H, ROW_NUM_W, CHIP_W, PAD_L, MIN_LBL, MAX_LBL, CELL_STEPS,
 } from './constants';
@@ -37,7 +37,6 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
     const sentinelRef    = useRef<HTMLDivElement>(null);
     const lblRef         = useRef<HTMLCanvasElement>(null);
     const axRef          = useRef<HTMLCanvasElement>(null);
-    const conRef         = useRef<HTMLCanvasElement>(null);
     const mainRef        = useRef<HTMLCanvasElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const gotoPosInputRef = useRef<HTMLInputElement>(null);
@@ -49,12 +48,14 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
     const matchRef       = useRef<Set<number>>(new Set());
     const hasSearchRef   = useRef(false);
     const conservationRef  = useRef<{ score: number; char: string }[]>([]);
-    const showConRef       = useRef(true);
     const consensusRowRef  = useRef<HTMLCanvasElement>(null);
     const showConsensRef   = useRef(true);
     const overviewRef       = useRef<HTMLCanvasElement>(null);
     const overviewDragRef   = useRef(false);
     const showOverviewRef   = useRef(true);
+    const logoRef           = useRef<HTMLCanvasElement>(null);
+    const showLogoRef       = useRef(false);
+    const logoDataRef       = useRef<({ freqs: Record<string, number>; IC: number } | null)[]>([]);
     const colorSchemeRef    = useRef<ColorScheme>('residue');
     const refSeqIdxRef      = useRef(0);
     const selectionRef      = useRef<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
@@ -83,9 +84,9 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
     const [selection, setSelection]               = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
     const [copiedFeedback, setCopiedFeedback]     = useState(false);
     const [gotoPosValue, setGotoPosValue]         = useState('');
-    const [showConservation, setShowConservation] = useState(true);
     const [showConsensus, setShowConsensus]       = useState(true);
     const [showOverview, setShowOverview]         = useState(true);
+    const [showLogo, setShowLogo]                 = useState(false);
     const [showExport, setShowExport]             = useState(false);
     const [isDark, setIsDark]                     = useState(false);
     const [searchQuery, setSearchQuery]           = useState('');
@@ -163,13 +164,38 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
         return idx >= 0 ? idx : 0;
     }, [seqs, refSeqName]);
 
+    // ── Per-column nucleotide frequency + information content (NT mode only) ──
+    const logoData = useMemo(() => {
+        if (!seqs.length || !numCols || isAminoAcid) return [];
+        const NT_CHARS = ['A', 'C', 'G', 'T', 'U'];
+        return Array.from({ length: numCols }, (_, c) => {
+            const counts: Record<string, number> = {};
+            let total = 0;
+            for (const s of seqs) {
+                const ch = (s.seq[c] ?? '-').toUpperCase();
+                if (NT_CHARS.includes(ch)) {
+                    counts[ch] = (counts[ch] ?? 0) + 1;
+                    total++;
+                }
+            }
+            if (total === 0) return null;
+            const freqs: Record<string, number> = {};
+            for (const ch of NT_CHARS) {
+                if (counts[ch]) freqs[ch] = counts[ch] / total;
+            }
+            const IC = Math.max(0, 2 + Object.values(freqs).reduce((s, f) => s + f * Math.log2(f), 0));
+            return { freqs, IC };
+        });
+    }, [seqs, numCols, isAminoAcid]);
+
     // Keep refs in sync
     matchRef.current        = matchRows;
     hasSearchRef.current    = searchQuery.trim().length > 0;
     conservationRef.current = conservation;
-    showConRef.current      = showConservation;
     showConsensRef.current  = showConsensus;
     showOverviewRef.current = showOverview;
+    showLogoRef.current     = showLogo;
+    logoDataRef.current     = logoData;
     colorSchemeRef.current  = colorScheme;
     refSeqIdxRef.current    = refSeqIdx;
     selectionRef.current    = selection;
@@ -614,84 +640,107 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
 
         ac.restore();
 
-        // ── Conservation canvas ────────────────────────────────────────────────
-        const conC = conRef.current;
-        if (conC && showConRef.current && conservationRef.current.length) {
-            const cons = conservationRef.current;
-            const cc   = conC.getContext('2d')!;
-            const conW = conC.clientWidth;
-            const conH = conC.clientHeight;
+        // ── Logo canvas (NT only) ──────────────────────────────────────────────
+        const lgC = logoRef.current;
+        if (lgC && showLogoRef.current && !isAA && logoDataRef.current.length) {
+            const ld  = logoDataRef.current;
+            const lgc = lgC.getContext('2d')!;
+            const lgW = lgC.clientWidth;
+            const lgH = lgC.clientHeight;
 
-            cc.clearRect(0, 0, conC.width, conC.height);
-            cc.save();
-            cc.scale(dpr, dpr);
+            lgc.clearRect(0, 0, lgC.width, lgC.height);
+            lgc.save();
+            lgc.scale(dpr, dpr);
 
-            // Background
-            cc.fillStyle = bgClr;
-            cc.fillRect(0, 0, conW, conH);
+            lgc.fillStyle = bgClr;
+            lgc.fillRect(0, 0, lgW, lgH);
 
-            const PAD_T  = 6;
-            const PAD_B  = 5;
-            const maxBarH = conH - PAD_T - PAD_B;
+            const LG_PAD_T = 5;
+            const LG_PAD_B = 5;
+            const maxBarH  = lgH - LG_PAD_T - LG_PAD_B;
 
-            // 50% dashed guideline
-            const midY = PAD_T + maxBarH * 0.5;
-            cc.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-            cc.lineWidth = 1;
-            cc.setLineDash([3, 4]);
-            cc.beginPath();
-            cc.moveTo(0, midY);
-            cc.lineTo(conW, midY);
-            cc.stroke();
-            cc.setLineDash([]);
+            // 1-bit dashed guideline at 50% of max IC
+            const midY = LG_PAD_T + maxBarH * 0.5;
+            lgc.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+            lgc.lineWidth = 1;
+            lgc.setLineDash([3, 4]);
+            lgc.beginPath();
+            lgc.moveTo(0, midY);
+            lgc.lineTo(lgW, midY);
+            lgc.stroke();
+            lgc.setLineDash([]);
 
-            // Bars
+            // Baseline font for measureText — must match drawing font
+            const baseFontSize = 100;
+            lgc.font = `700 ${baseFontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`;
+
             for (let col = startCol; col < endCol; col++) {
-                const entry = cons[col];
-                if (!entry) continue;
-                const cx    = col * cs - sx;
-                const bh    = Math.max(1, entry.score * maxBarH);
-                const by    = conH - PAD_B - bh;
-                const color = entry.char !== '-'
-                    ? (residueBg(entry.char, isAA) || gapClr)
-                    : gapClr;
+                const entry = ld[col];
+                if (!entry || entry.IC < 0.02) continue;
+                const { freqs, IC } = entry;
+                const cx = col * cs - sx;
+                const bx = cx + (cs >= 6 ? 0.5 : 0);
+                const bw = Math.max(1, cs >= 6 ? cs - 1 : cs);
 
-                // Faded bar (full width, low opacity) as baseline
-                cc.globalAlpha = 0.12;
-                cc.fillStyle = dark ? 'rgba(255,255,255,1)' : 'rgba(0,0,0,1)';
-                cc.fillRect(cx, PAD_T, cs, maxBarH);
+                // Sort ascending: least frequent on top, most frequent at bottom
+                const letters = Object.entries(freqs)
+                    .filter(([, f]) => f > 0)
+                    .sort(([, a], [, b]) => a - b);
 
-                // Actual conservation bar
-                cc.globalAlpha = 0.35 + entry.score * 0.65;
-                cc.fillStyle = color;
-                cc.fillRect(cx, by, cs, bh);
+                let yBottom = lgH - LG_PAD_B;
 
-                cc.globalAlpha = 1;
+                for (const [letter, freq] of [...letters].reverse()) {
+                    const barH = (IC / 2) * freq * maxBarH;
+                    if (barH < 0.4) { yBottom -= barH; continue; }
+                    const barY = yBottom - barH;
+                    const color = NT_BG[letter] || (dark ? '#94a3b8' : '#64748b');
+
+                    // Colored bar — always drawn, adapts to any zoom
+                    lgc.globalAlpha = 0.88;
+                    lgc.fillStyle   = color;
+                    lgc.fillRect(bx, barY, bw, barH);
+                    lgc.globalAlpha = 1;
+
+                    // Letter overlay — only when column + bar are large enough
+                    if (cs >= 8 && barH >= 5) {
+                        // Font size bounded by both bar height and column width
+                        const letterSize = Math.min(barH * 0.85, cs * 0.74, 40);
+                        if (letterSize >= 5) {
+                            lgc.font = `700 ${letterSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`;
+                            lgc.textAlign    = 'center';
+                            lgc.textBaseline = 'middle';
+                            lgc.fillStyle    = 'rgba(255,255,255,0.93)';
+                            lgc.fillText(letter, cx + cs / 2, barY + barH / 2 + 0.5);
+                        }
+                    }
+
+                    yBottom -= barH;
+                }
             }
 
             // Column hover highlight
             if (h && h.col >= startCol && h.col < endCol) {
-                cc.fillStyle = crossClr;
-                cc.fillRect(h.col * cs - sx, 0, cs, conH);
+                lgc.fillStyle = crossClr;
+                lgc.fillRect(h.col * cs - sx, 0, cs, lgH);
             }
 
-            // "100%" watermark label top-right
-            cc.font = `500 8.5px system-ui, sans-serif`;
-            cc.textAlign = 'right';
-            cc.textBaseline = 'top';
-            cc.fillStyle = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)';
-            cc.fillText('100%', conW - 4, 2);
+            // "2 bits" scale watermark
+            lgc.font = `500 8.5px system-ui, sans-serif`;
+            lgc.textAlign    = 'right';
+            lgc.textBaseline = 'top';
+            lgc.fillStyle    = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)';
+            lgc.fillText('2 bits', lgW - 4, 2);
 
             // Bottom border
-            cc.strokeStyle = borderClr;
-            cc.lineWidth = 1;
-            cc.setLineDash([]);
-            cc.beginPath();
-            cc.moveTo(0, conH - 0.5);
-            cc.lineTo(conW, conH - 0.5);
-            cc.stroke();
+            lgc.strokeStyle = borderClr;
+            lgc.lineWidth = 1;
+            lgc.setLineDash([]);
+            lgc.beginPath();
+            lgc.moveTo(0, lgH - 0.5);
+            lgc.lineTo(lgW, lgH - 0.5);
+            lgc.stroke();
 
-            cc.restore();
+            lgc.restore();
         }
 
         // ── Consensus row canvas ───────────────────────────────────────────────
@@ -860,11 +909,11 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
     // ── Canvas sizing ─────────────────────────────────────────────────────────
     useEffect(() => {
         const dpr      = window.devicePixelRatio || 1;
-        const conOff   = showConservation ? CONSERVATION_H : 0;
+        const logoOff  = !isAminoAcid && showLogo ? LOGO_H : 0;
         const consOff  = showConsensus ? cellSize : 0;
         const ovOff    = showOverview ? OVERVIEW_H : 0;
         const mainW    = Math.max(1, gridSize.w - labelWidth);
-        const mainH    = Math.max(1, gridSize.h - AXIS_H - conOff - consOff - ovOff);
+        const mainH    = Math.max(1, gridSize.h - AXIS_H - logoOff - consOff - ovOff);
         cellSizeRef.current = cellSize;
 
         const setC = (c: HTMLCanvasElement | null, w: number, h: number) => {
@@ -875,13 +924,13 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
         setC(mainRef.current, mainW, mainH);
         setC(lblRef.current, labelWidth, mainH);
         setC(axRef.current, mainW, AXIS_H);
-        setC(conRef.current, mainW, CONSERVATION_H);
+        if (!isAminoAcid) setC(logoRef.current, mainW, LOGO_H);
         setC(consensusRowRef.current, mainW, cellSize);
         setC(overviewRef.current, mainW, OVERVIEW_H);
 
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(drawAll);
-    }, [gridSize, labelWidth, cellSize, showConservation, showConsensus, showOverview, drawAll]);
+    }, [gridSize, labelWidth, cellSize, showLogo, showConsensus, showOverview, isAminoAcid, drawAll]);
 
     // ── Redraw on hover/search ────────────────────────────────────────────────
     useEffect(() => {
@@ -1031,12 +1080,11 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
         const mainH = mnC.clientHeight;
         const lblW  = lblC.clientWidth;
 
-        const conOff  = showConRef.current && conRef.current      ? CONSERVATION_H : 0;
         const consOff = showConsensRef.current && consensusRowRef.current ? cellSizeRef.current : 0;
         const ovOff   = showOverviewRef.current && overviewRef.current  ? OVERVIEW_H : 0;
 
         const exportW = lblW + mainW;
-        const exportH = AXIS_H + conOff + mainH + consOff + ovOff;
+        const exportH = AXIS_H + mainH + consOff + ovOff;
 
         const off = document.createElement('canvas');
         off.width  = Math.round(exportW * dpr);
@@ -1051,19 +1099,6 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
         ctx.drawImage(axC, lblW, 0, mainW, AXIS_H);
 
         let y = AXIS_H;
-
-        // Conservation track
-        if (conOff > 0 && conRef.current) {
-            ctx.fillStyle = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)';
-            ctx.fillRect(0, y, lblW, CONSERVATION_H);
-            ctx.font = '700 8px system-ui, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = dark ? '#334155' : '#cbd5e1';
-            ctx.fillText('CONS', lblW / 2, y + CONSERVATION_H / 2);
-            ctx.drawImage(conRef.current, lblW, y, mainW, CONSERVATION_H);
-            y += CONSERVATION_H;
-        }
 
         // Label + main sequence canvases
         ctx.drawImage(lblC, 0, y, lblW, mainH);
@@ -1423,7 +1458,7 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
         + (showExport ? EXPORT_H : 0)
         + (showLegend ? LEGEND_H : 0)
         + AXIS_H
-        + (showConservation ? CONSERVATION_H : 0)
+        + (!isAminoAcid && showLogo ? LOGO_H : 0)
         + canvasAreaH
         + (showConsensus ? cellSize : 0)
         + (showOverview ? OVERVIEW_H : 0)
@@ -1518,16 +1553,6 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
                         </svg>
                     </button>
                     <button
-                        className={`${styles.iconBtn} ${showConservation ? styles.iconBtnOn : ''}`}
-                        onClick={() => setShowConservation(v => !v)}
-                        title="Toggle conservation track">
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                            <rect x="1"   y="8"   width="2.5" height="4"   rx="0.5" fill="currentColor" opacity=".5"/>
-                            <rect x="5.5" y="4.5" width="2.5" height="7.5" rx="0.5" fill="currentColor" opacity=".75"/>
-                            <rect x="10"  y="1"   width="2.5" height="11"  rx="0.5" fill="currentColor"/>
-                        </svg>
-                    </button>
-                    <button
                         className={`${styles.iconBtn} ${showConsensus ? styles.iconBtnOn : ''}`}
                         onClick={() => setShowConsensus(v => !v)}
                         title="Toggle consensus row">
@@ -1550,6 +1575,18 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
                             <rect x="4" y="4" width="3" height="5" rx="0.4" stroke="currentColor" strokeWidth="1" fill="none"/>
                         </svg>
                     </button>
+                    {!isAminoAcid && (
+                        <button
+                            className={`${styles.iconBtn} ${showLogo ? styles.iconBtnOn : ''}`}
+                            onClick={() => setShowLogo(v => !v)}
+                            title="Toggle sequence logo">
+                            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                                <text x="0"   y="13" fontSize="9"   fontWeight="900" fontFamily="monospace" fill="currentColor" opacity="1">A</text>
+                                <text x="6"   y="13" fontSize="6.5" fontWeight="900" fontFamily="monospace" fill="currentColor" opacity=".7">C</text>
+                                <text x="9.5" y="13" fontSize="4"   fontWeight="900" fontFamily="monospace" fill="currentColor" opacity=".45">G</text>
+                            </svg>
+                        </button>
+                    )}
                     <button
                         className={`${styles.iconBtn} ${showExport ? styles.iconBtnOn : ''}`}
                         onClick={() => setShowExport(v => !v)}
@@ -1810,9 +1847,9 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
             <div className={styles.grid} ref={gridRef}>
                 <div className={styles.labelCol} style={{ width: labelWidth }}>
                     <div className={styles.corner} style={{ height: AXIS_H }} />
-                    {showConservation && (
-                        <div className={styles.consLabel} style={{ height: CONSERVATION_H }}>
-                            CONS
+                    {!isAminoAcid && showLogo && (
+                        <div className={styles.consLabel} style={{ height: LOGO_H }}>
+                            LOGO
                         </div>
                     )}
                     <canvas ref={lblRef} className={styles.canvas} style={{ cursor: 'grab' }} onMouseDown={onLblMouseDown} />
@@ -1829,8 +1866,8 @@ export function ReSeqt({ fasta, isAminoAcid = false }: Props) {
                 </div>
                 <div className={styles.rightCol}>
                     <canvas ref={axRef} className={styles.canvas} />
-                    {showConservation && (
-                        <canvas ref={conRef} className={styles.canvas} />
+                    {!isAminoAcid && showLogo && (
+                        <canvas ref={logoRef} className={styles.canvas} />
                     )}
                     <div className={styles.scrollArea}>
                         <div ref={sentinelRef} className={styles.sentinel}
